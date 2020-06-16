@@ -131,6 +131,11 @@ namespace PelotonDataGui
             await SetProgress(progress);
 
             double progressStep = (100 - progress) / workoutList.Count;
+            var jsonRoot = Path.Combine(OutputDirectoryTextBox.Text, "json");
+            if (!Directory.Exists(jsonRoot))
+            {
+                Directory.CreateDirectory(jsonRoot);
+            }
 
             Logger.Log("Downloading data for each workout");
             bool redownloadWorkoutDetails = RedownloadCheckbox.IsChecked.HasValue && RedownloadCheckbox.IsChecked.Value;
@@ -138,17 +143,18 @@ namespace PelotonDataGui
             {
                 try
                 {
-                    string filenameBase = Path.Combine(OutputDirectoryTextBox.Text, p.GetFileNameBaseFromRideDatum(ride));
-                    string path = filenameBase + "_Metrics.csv";
+                    string filenameBase = p.GetFileNameBaseFromRideDatum(ride);
+                    var path = Path.Combine(OutputDirectoryTextBox.Text, filenameBase + "_Metrics.csv");
+                    var jsonPath = Path.Combine(jsonRoot, filenameBase + "_Metrics.json");
                     if (File.Exists(path))
                     {
                         Logger.Log($"Already of workout metrics, skipping: {ride.ride.title} on {Util.DateTimeFromEpochSeconds(ride.device_time_created_at).ToShortDateString()}");
                     }
                     else
                     {
-                        var data = await p.GetWorkoutMetricsAsync(ride, this, filenameBase + "_Metrics.json");
-                        Logger.Log($"Writing data to {path}");
-                        p.OutputRideCSV(data, path);
+                        var data = await p.GetWorkoutMetricsAsync(ride, this, jsonPath);
+                        Logger.Log($"Writing data to {jsonPath}");
+                        p.OutputRideCSV(data, jsonPath);
                         //var details = await p.GetWorkoutEventDetails(ride, this, filenameBase + "_EventDetails.json");
                     }
 
@@ -156,7 +162,8 @@ namespace PelotonDataGui
                     if (File.Exists(detailsPath) && !redownloadWorkoutDetails)
                     {
                         Logger.Log($"Already have user details for workout, skipping: {ride.ride.title} on {Util.DateTimeFromEpochSeconds(ride.device_time_created_at).ToShortDateString()}");
-                    } else
+                    }
+                    else
                     {
                         var userDetails = await p.GetWorkoutUserDetails(ride, this, filenameBase + "_UserWorkoutDetails.json");
                         var propertyDict = Util.GetObjectPropertiesAsDictionaryRecursive(userDetails);

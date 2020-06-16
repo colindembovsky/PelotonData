@@ -32,16 +32,31 @@ namespace PelotonData
             {
                 if (prop.PropertyType.IsPrimitive || prop.PropertyType.Name == "String")
                 {
-                    dict[prop.Name] = prop.GetValue(o).ToString().Replace(",", "<COMMA>");
+                    var value = prop.GetValue(o);
+                    if (value != null)
+                    {
+                        dict[prop.Name] = prop.GetValue(o).ToString().Replace(",", "<COMMA>");
+                    }
+                    else
+                    {
+                        dict[prop.Name] = "";
+                    }
                 } // if the property is NOT an enumerable, then descend into it. 
                 else if (!typeof(System.Collections.IEnumerable).IsAssignableFrom(prop.PropertyType))
                 {
                     var value = prop.GetValue(o);
                     if (value == null) continue;
-                    var nestedDict = GetObjectPropertiesAsDictionaryRecursive(value);
-                    foreach (var kvp in nestedDict)
+                    if (value.GetType().Name != "String")
                     {
-                        dict[$"{prop.Name}.{kvp.Key}"] = kvp.Value;
+                        var nestedDict = GetObjectPropertiesAsDictionaryRecursive(value);
+                        foreach (var kvp in nestedDict)
+                        {
+                            dict[$"{prop.Name}.{kvp.Key}"] = kvp.Value;
+                        }
+                    }
+                    else
+                    {
+                        dict[prop.Name] = value.ToString().Replace(",", "<COMMA>");
                     }
                 }
 
