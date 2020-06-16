@@ -139,35 +139,39 @@ namespace PelotonDataGui
 
             Logger.Log("Downloading data for each workout");
             bool redownloadWorkoutDetails = RedownloadCheckbox.IsChecked.HasValue && RedownloadCheckbox.IsChecked.Value;
+            var jsonPath = Path.Combine(OutputDirectoryTextBox.Text, "json");
+            if (!Directory.Exists(jsonPath)) Directory.CreateDirectory(jsonPath);
             foreach (var ride in workoutList)
             {
                 try
                 {
-                    string filenameBase = p.GetFileNameBaseFromRideDatum(ride);
-                    var path = Path.Combine(OutputDirectoryTextBox.Text, filenameBase + "_Metrics.csv");
-                    var jsonPath = Path.Combine(jsonRoot, filenameBase + "_Metrics.json");
+                    var dataPath = OutputDirectoryTextBox.Text;
+                    var fileName = p.GetFileNameBaseFromRideDatum(ride);
+                    string dataFilenameBase = Path.Combine(dataPath, fileName);
+                    string jsonFilenameBase = Path.Combine(jsonPath, fileName);
+                    string path = dataFilenameBase + "_Metrics.csv";
                     if (File.Exists(path))
                     {
                         Logger.Log($"Already of workout metrics, skipping: {ride.ride.title} on {Util.DateTimeFromEpochSeconds(ride.device_time_created_at).ToShortDateString()}");
                     }
                     else
                     {
-                        var data = await p.GetWorkoutMetricsAsync(ride, this, jsonPath);
-                        Logger.Log($"Writing data to {jsonPath}");
-                        p.OutputRideCSV(data, jsonPath);
+                        var data = await p.GetWorkoutMetricsAsync(ride, this, path);
+                        Logger.Log($"Writing data to {path}");
+                        p.OutputRideCSV(data, path);
                         //var details = await p.GetWorkoutEventDetails(ride, this, filenameBase + "_EventDetails.json");
                     }
 
-                    string detailsPath = filenameBase + "_UserWorkoutDetails.csv";
+                    string detailsPath = dataFilenameBase + "_UserWorkoutDetails.csv";
                     if (File.Exists(detailsPath) && !redownloadWorkoutDetails)
                     {
                         Logger.Log($"Already have user details for workout, skipping: {ride.ride.title} on {Util.DateTimeFromEpochSeconds(ride.device_time_created_at).ToShortDateString()}");
-                    }
+                    } 
                     else
                     {
-                        var userDetails = await p.GetWorkoutUserDetails(ride, this, filenameBase + "_UserWorkoutDetails.json");
+                        var userDetails = await p.GetWorkoutUserDetails(ride, this, jsonFilenameBase + "_UserWorkoutDetails.json");
                         var propertyDict = Util.GetObjectPropertiesAsDictionaryRecursive(userDetails);
-                        Util.WriteDictionaryAsCSV(propertyDict, filenameBase + "_UserWorkoutDetails.csv");
+                        Util.WriteDictionaryAsCSV(propertyDict, dataFilenameBase + "_UserWorkoutDetails.csv");
                     }
                 } catch (Exception ex)
                 {
